@@ -291,7 +291,7 @@ class MessageLog(models.Model):
     def __str__(self):
         try:
             email = self.email
-            return "On {0}, \"{1}\" to {2}".format(self.when_attempted,
+            return u"On {0}, \"{1}\" to {2}".format(self.when_attempted,
                                                    email.subject,
                                                    ", ".join(email.to))
         except Exception:
