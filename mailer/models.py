@@ -123,7 +123,7 @@ class Message(models.Model):
             email = self.email
             return "On {0}, \"{1}\" to {2}".format(self.when_added,
                                                    email.subject,
-                                                   ", ".join(email.to))
+                                                   ", ".join(email.to)).encode('utf-8')
         except Exception:
             return "<Message repr unavailable>"
 
