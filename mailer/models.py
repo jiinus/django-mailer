@@ -291,9 +291,9 @@ class MessageLog(models.Model):
     def __str__(self):
         try:
             email = self.email
-            return u"On {0}, \"{1}\" to {2}".format(self.when_attempted,
+            return "On {0}, \"{1}\" to {2}".format(self.when_attempted,
                                                    email.subject,
-                                                   ", ".join(email.to))
+                                                   ", ".join(email.to)).encode('utf-8')
         except Exception:
             return "<MessageLog repr unavailable>"
 
