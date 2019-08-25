@@ -1,9 +1,34 @@
 Change log
 ==========
 
-Unreleased
-----------
+1.2.6 - 2019-04-03
+------------------
 
+* Official Django 2.1 and 2.2 support.
+* Don't close DB connection in management commands.
+  This is unnecessary with modern Django.
+
+1.2.5
+-----
+
+* Fixed packaging file permission problems.
+* Added Japanese locale (thanks msk7777)
+
+1.2.4
+-----
+
+* Django 2.0 support.
+
+1.2.3
+-----
+
+* Fixed crasher with models ``__str__``
+
+1.2.2
+-----
+
+* Django 1.10 support.
+* Fixed reprs for Message and MessageLog.
 
 1.2.1
 -----

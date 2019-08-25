@@ -22,7 +22,7 @@ the mail::
     MAILER_EMAIL_BACKEND = "your.actual.EmailBackend"
 
 Now, just use the normal `Django mail functions
-<https://docs.djangoproject.com/en/dev/topics/email/>`_ for sending email. These
+<https://docs.djangoproject.com/en/stable/topics/email/>`_ for sending email. These
 functions will store mail on a queue in the database, which must be sent as
 below.
 
@@ -121,4 +121,31 @@ each email `MAILER_EMAIL_THROTTLE`.
 
 Unprocessed emails will be evaluated in the following delivery iterations.
 
+Other settings
+==============
 
+If you need to be able to control where django-mailer puts its lock file (used
+to ensure mail is not sent twice), you can set ``MAILER_LOCK_PATH`` to a full
+absolute path to the file to be used as a lock. The extension ".lock" will be
+added. The process running ``send_mail`` needs to have permissions to create and
+delete this file, and others in the same directory. With the default value of
+``None`` django-mailer will use a path in current working directory.
+
+If you need to change the batch size used by django-mailer to save messages in
+``mailer.backend.DbBackend``, you can set ``MAILER_MESSAGES_BATCH_SIZE`` to a 
+value more suitable for you. This value, which defaults to `None`, will be passed to 
+`Django's bulk_create method <https://docs.djangoproject.com/en/stable/ref/models/querysets/#bulk-create>`_
+ as the `batch_size` parameter.
+ 
+ Using the DontSendEntry table
+ =============================
+ 
+ Django-mailer creates a DontSendEntry model, which is used to filter-out
+ recipients from messages being created.
+ 
+ But beware, it's actually only used when directly sending messages through
+ mailer, not when mailer is used as an alternate EMAIL_BACKEND for django. Also,
+ even if recipients become empty due to this filtering, the email will be queued
+ for sending anyway. (A patch to fix these issues would be accepted)
+ 
+ 

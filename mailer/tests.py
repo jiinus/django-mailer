@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import datetime
 import pickle
 import smtplib
@@ -6,9 +9,11 @@ import time
 import django
 import lockfile
 from django.core import mail
+from django.core.exceptions import ImproperlyConfigured
 from django.core.mail.backends.locmem import EmailBackend as LocMemEmailBackend
 from django.core.management import call_command
 from django.test import TestCase
+from django.utils import six
 from django.utils.timezone import now as datetime_now
 from mock import ANY, Mock, patch
 
@@ -49,18 +54,30 @@ class FailingMailerEmailBackend(LocMemEmailBackend):
         raise smtplib.SMTPSenderRefused(1, "foo", "foo@foo.com")
 
 
-class TestBackend(TestCase):
+class BackendTest(TestCase):
     def test_save_to_db(self):
         """
         Test that using send_mail creates a Message object in DB instead, when EMAIL_BACKEND is set.
         """
         self.assertEqual(Message.objects.count(), 0)
         with self.settings(EMAIL_BACKEND="mailer.backend.DbBackend"):
-            mail.send_mail("Subject", "Body", "sender@example.com", ["recipient@example.com"])
+            mail.send_mail("Subject ☺", "Body", "sender@example.com", ["recipient@example.com"])
             self.assertEqual(Message.objects.count(), 1)
 
+    def test_save_mass_mail_to_db(self):
+        """
+        Test that using send_mass_mail creates multiple Message objects in DB instead, when
+        EMAIL_BACKEND is set.
+        """
+        self.assertEqual(Message.objects.count(), 0)
+        with self.settings(EMAIL_BACKEND="mailer.backend.DbBackend"):
+            message1 = ('Subject ☺', 'Body', 'sender@example.com', ['first@example.com'])
+            message2 = ('Another Subject ☺', 'Body', 'sender@example.com', ['second@test.com'])
+            mail.send_mass_mail((message1, message2))
+            self.assertEqual(Message.objects.count(), 2)
 
-class TestSending(TestCase):
+
+class SendingTest(TestCase):
     def setUp(self):
         # Ensure outbox is empty at start
         del TestMailerEmailBackend.outbox[:]
@@ -71,7 +88,7 @@ class TestSending(TestCase):
         specified MAILER_EMAIL_BACKEND
         """
         with self.settings(MAILER_EMAIL_BACKEND="mailer.tests.TestMailerEmailBackend"):
-            mailer.send_mail("Subject", "Body", "sender1@example.com", ["recipient@example.com"])
+            mailer.send_mail("Subject ☺", "Body", "sender1@example.com", ["recipient@example.com"])
             self.assertEqual(Message.objects.count(), 1)
             self.assertEqual(len(TestMailerEmailBackend.outbox), 0)
             engine.send_all()
@@ -164,10 +181,10 @@ class TestSending(TestCase):
     def test_send_mass_mail(self):
         with self.settings(MAILER_EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             mails = (
-                ("Subject", "Body", "mass0@example.com", ["recipient0@example.com"]),
-                ("Subject", "Body", "mass1@example.com", ["recipient1@example.com"]),
-                ("Subject", "Body", "mass2@example.com", ["recipient2@example.com"]),
-                ("Subject", "Body", "mass3@example.com", ["recipient3@example.com"]),
+                ("Subject ☺", "Body", "mass0@example.com", ["recipient0@example.com"]),
+                ("Subject ☺", "Body", "mass1@example.com", ["recipient1@example.com"]),
+                ("Subject ☺", "Body", "mass2@example.com", ["recipient2@example.com"]),
+                ("Subject ☺", "Body", "mass3@example.com", ["recipient3@example.com"]),
             )
 
             mailer.send_mass_mail(mails)
@@ -183,6 +200,7 @@ class TestSending(TestCase):
             self.assertEqual(len(mail.outbox), 4)
             for i, sent in enumerate(mail.outbox):
                 # Default "plain text"
+                self.assertEqual(sent.subject, "Subject ☺")
                 self.assertEqual(sent.from_email, "mass{0}@example.com".format(i))
                 self.assertEqual(sent.to, ["recipient{0}@example.com".format(i)])
 
@@ -366,7 +384,7 @@ class TestSending(TestCase):
             )
 
 
-class TestLockNormal(TestCase):
+class LockNormalTest(TestCase):
     def setUp(self):
         class CustomError(Exception):
             pass
@@ -392,7 +410,7 @@ class TestLockNormal(TestCase):
         self.patcher_prio.stop()
 
 
-class TestLockLocked(TestCase):
+class LockLockedTest(TestCase):
     def setUp(self):
         config = {
             "acquire.side_effect": lockfile.AlreadyLocked,
@@ -416,7 +434,7 @@ class TestLockLocked(TestCase):
         self.patcher_prio.stop()
 
 
-class TestLockTimeout(TestCase):
+class LockTimeoutTest(TestCase):
     def setUp(self):
         config = {
             "acquire.side_effect": lockfile.LockTimeout,
@@ -440,7 +458,7 @@ class TestLockTimeout(TestCase):
         self.patcher_prio.stop()
 
 
-class TestPrioritize(TestCase):
+class PrioritizeTest(TestCase):
     def test_prioritize(self):
         with self.settings(MAILER_EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             mailer.send_mail("Subject", "Body", "prio1@example.com", ["r@example.com"],
@@ -532,7 +550,7 @@ class TestPrioritize(TestCase):
             self.assertEqual(Message.objects.deferred().count(), 1)
 
 
-class TestMessages(TestCase):
+class MessagesTest(TestCase):
     def test_message(self):
         with self.settings(MAILER_EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
             mailer.send_mail("Subject Msg", "Body", "msg1@example.com", ["rec1@example.com"])
@@ -595,35 +613,36 @@ class TestMessages(TestCase):
 
     def test_message_str(self):
         with self.settings(MAILER_EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
-            mailer.send_mail("Subject Msg", "Body", "msg1@example.com", ["rec1@example.com"])
+            mailer.send_mail("Subject Msg 中", "Body 中", "msg1@example.com", ["rec1@example.com"])
 
             self.assertEqual(Message.objects.count(), 1)
 
             msg = Message.objects.get()
             self.assertEqual(
-                str(msg),
-                'On {0}, \"Subject Msg\" to rec1@example.com'.format(msg.when_added),
+                six.text_type(msg),
+                'On {0}, "Subject Msg 中" to rec1@example.com'.format(msg.when_added),
             )
             msg.message_data = None
             self.assertEqual(str(msg), '<Message repr unavailable>')
 
     def test_message_log_str(self):
         with self.settings(MAILER_EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend"):
-            mailer.send_mail("Subject Log", "Body", "log1@example.com", ["1gol@example.com"])
+            mailer.send_mail("Subject Log 中", "Body 中", "log1@example.com", ["1gol@example.com"])
             engine.send_all()
 
             self.assertEqual(MessageLog.objects.count(), 1)
 
             log = MessageLog.objects.get()
             self.assertEqual(
-                str(log),
-                'On {0}, \"Subject Log\" to 1gol@example.com'.format(log.when_attempted),
+                six.text_type(log),
+                'On {0}, "Subject Log 中" to 1gol@example.com'.format(log.when_attempted),
             )
+
             log.message_data = None
             self.assertEqual(str(log), '<MessageLog repr unavailable>')
 
 
-class TestDbToEmail(TestCase):
+class DbToEmailTest(TestCase):
     def test_db_to_email(self):
         # Empty/Invalid content
         self.assertEqual(db_to_email(""), None)
@@ -661,7 +680,7 @@ def call_command_with_cron_arg(command, cron_value):
     return call_command(command, '--cron={}'.format(cron_value))
 
 
-class TestCommandHelper(TestCase):
+class CommandHelperTest(TestCase):
     def test_send_mail_no_cron(self):
         with patch('mailer.management.commands.send_mail.logging') as logging:
             call_command('send_mail')
@@ -691,3 +710,15 @@ class TestCommandHelper(TestCase):
         with patch('mailer.management.commands.retry_deferred.logging') as logging:
             call_command_with_cron_arg('retry_deferred', 1)
             logging.basicConfig.assert_called_with(level=logging.ERROR, format=ANY)
+
+
+class EmailBackendSettingLoopTest(TestCase):
+    def test_loop_detection(self):
+        with self.settings(EMAIL_BACKEND='mailer.backend.DbBackend',
+                           MAILER_EMAIL_BACKEND='mailer.backend.DbBackend'), \
+                self.assertRaises(ImproperlyConfigured) as catcher:
+            engine.send_all()
+
+        self.assertIn('mailer.backend.DbBackend', str(catcher.exception))
+        self.assertIn('EMAIL_BACKEND', str(catcher.exception))
+        self.assertIn('MAILER_EMAIL_BACKEND', str(catcher.exception))
