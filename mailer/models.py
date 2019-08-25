@@ -42,31 +42,31 @@ class MessageManager(models.Manager):
         """
         the high priority messages in the queue
         """
-        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_HIGH)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now()), priority=PRIORITY_HIGH)
 
     def medium_priority(self):
         """
         the medium priority messages in the queue
         """
-        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_MEDIUM)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now()), priority=PRIORITY_MEDIUM)
 
     def low_priority(self):
         """
         the low priority messages in the queue
         """
-        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_LOW)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now()), priority=PRIORITY_LOW)
 
     def non_deferred(self):
         """
         the messages in the queue not deferred
         """
-        return self.exclude(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_DEFERRED)
+        return self.exclude(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now()), priority=PRIORITY_DEFERRED)
 
     def deferred(self):
         """
         the deferred messages in the queue
         """
-        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_DEFERRED)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now()), priority=PRIORITY_DEFERRED)
 
     def retry_deferred(self, new_priority=PRIORITY_MEDIUM):
         count = 0
