@@ -272,7 +272,7 @@ class MessageLog(models.Model):
 
     # fields from Message
     message_data = models.TextField()
-    message_id = models.TextField(editable=False, null=True)
+    message_id = models.TextField(editable=False, null=True, db_index=True)
     when_added = models.DateTimeField(db_index=True)
     priority = models.CharField(max_length=1, choices=PRIORITIES, db_index=True)
     # @@@ campaign?
