@@ -9,6 +9,7 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.timezone import now as datetime_now
 from django.core.mail import EmailMessage
 from django.db import models
+from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 
 
@@ -41,31 +42,31 @@ class MessageManager(models.Manager):
         """
         the high priority messages in the queue
         """
-        return self.filter(priority=PRIORITY_HIGH)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_HIGH)
 
     def medium_priority(self):
         """
         the medium priority messages in the queue
         """
-        return self.filter(priority=PRIORITY_MEDIUM)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_MEDIUM)
 
     def low_priority(self):
         """
         the low priority messages in the queue
         """
-        return self.filter(priority=PRIORITY_LOW)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_LOW)
 
     def non_deferred(self):
         """
         the messages in the queue not deferred
         """
-        return self.exclude(priority=PRIORITY_DEFERRED)
+        return self.exclude(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_DEFERRED)
 
     def deferred(self):
         """
         the deferred messages in the queue
         """
-        return self.filter(priority=PRIORITY_DEFERRED)
+        return self.filter(Q(dont_send_until=None) | Q(dont_send_until__lte=datetime_now), priority=PRIORITY_DEFERRED)
 
     def retry_deferred(self, new_priority=PRIORITY_MEDIUM):
         count = 0
@@ -112,6 +113,7 @@ class Message(models.Model):
     # The actual data - a pickled EmailMessage
     message_data = models.TextField()
     when_added = models.DateTimeField(default=datetime_now)
+    dont_send_until = models.DateTimeField(null=True, default=None, blank=True, db_index=True)
     priority = models.CharField(max_length=1, choices=PRIORITIES, default=PRIORITY_MEDIUM)
     # @@@ campaign?
     # @@@ content_type?
