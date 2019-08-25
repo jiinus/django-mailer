@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 from django.contrib import admin
+from django.utils.safestring import mark_safe
 
 from mailer.models import Message, DontSendEntry, MessageLog
 
@@ -15,7 +16,7 @@ class MessageAdminMixin(object):
     def plain_text_body(self, instance):
         email = instance.email
         if hasattr(email, 'body'):
-            return email.body
+            return mark_safe('<div style="white-space: pre-line;">%s</div>' % email.body)
         else:
             return "<Can't decode>"
 
